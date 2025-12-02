@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPS - The Art of Paan</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS VARIABLES FOR THEMES --- */
+        :root {
+            --bg-gradient: linear-gradient(to bottom, #FFF8EE, #F5FFFA);
+            --text-primary: #1B3A2D;
+            --text-secondary: #555555;
+            --accent-color: #2E8B57;
+            --modal-bg: #ffffff;
+            --modal-border: #eee;
+            --input-bg: #E0F2F1;
+            --input-text: #1B3A2D;
+            --toggle-btn-bg: #2E8B57;
+            --toggle-icon: #fff;
+        }
+
+        [data-theme="dark"] {
+            --bg-gradient: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
+            --text-primary: #D4AF37;
+            --text-secondary: #cccccc;
+            --accent-color: #D4AF37;
+            --modal-bg: #1a1a1a;
+            --modal-border: #333;
+            --input-bg: #333;
+            --input-text: #D4AF37;
+            --toggle-btn-bg: #D4AF37;
+            --toggle-icon: #000;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg-gradient);
+            font-family: 'Poppins', sans-serif;
+            touch-action: none; 
+            user-select: none; 
+            color: var(--text-primary);
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        #theme-toggle {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: var(--toggle-btn-bg); color: var(--toggle-icon);
+            border: none; width: 50px; height: 50px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s, background 0.3s;
+        }
+        #theme-toggle:hover { transform: scale(1.1) rotate(10deg); }
+
+        #header-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 95%; text-align: center; z-index: 10; pointer-events: none; 
+        }
+
+        h1 {
+            margin: 0; font-family: 'Playfair Display', serif; font-size: 5rem; 
+            font-weight: 900; letter-spacing: 4px; color: var(--text-primary);
+            cursor: pointer; pointer-events: auto; text-shadow: 0 4px 0px rgba(0,0,0,0.1); 
+            line-height: 1; transition: color 0.5s;
+        }
+
+        .sub-heading {
+            font-family: 'Playfair Display', serif; font-size: 1.1rem; 
+            color: var(--accent-color); margin-top: 5px; font-weight: 600;
+            letter-spacing: 1px; transition: color 0.5s;
+        }
+
+        #footer-container {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            z-index: 10; pointer-events: none; color: var(--text-primary);
+            font-size: 0.85rem; line-height: 1.5; padding-bottom: 10px;
+            padding-top: 20px; transition: color 0.5s;
+        }
+
+        .footer-brand { font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-color); }
+        .footer-details { font-weight: 400; color: var(--text-secondary); font-size: 0.8rem; }
+
+        #admin-controls {
+            position: absolute; top: 80px; right: 20px; z-index: 100;
+            display: none; pointer-events: auto;
+        }
+
+        .toggle-btn {
+            background: var(--accent-color); color: white; border: none;
+            padding: 10px 25px; border-radius: 50px; font-family: 'Poppins', sans-serif;
+            font-weight: 600; font-size: 0.85rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;
+        }
+
+        .modal {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.9); background: var(--modal-bg);
+            padding: 40px; border-radius: 20px; border: 1px solid var(--modal-border);
+            color: var(--text-primary); text-align: center; opacity: 0; pointer-events: none;
+            transition: all 0.3s ease; z-index: 1000; min-width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .modal.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        .modal h2 { margin-top: 0; color: var(--accent-color); font-family: 'Playfair Display', serif; }
+        .modal input { 
+            width: 100%; padding: 15px; margin: 10px 0; background: var(--input-bg); 
+            border: 1px solid #555; color: var(--input-text); border-radius: 8px; 
+            box-sizing: border-box; font-family: 'Poppins', sans-serif; 
+        }
+        
+        .btn { background: var(--accent-color); border: none; color: #fff; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 15px; }
+        .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--text-secondary); }
+        
+        #gesture-hint {
+            position: absolute; bottom: 80px; width: 100%; text-align: center;
+            color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 2px; opacity: 0.5; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="theme-toggle" onclick="toggleTheme()">
+        <i class="ph ph-moon"></i>
+    </button>
+
+    <div id="header-container">
+        <h1 id="secret-trigger">KPS</h1>
+        <div class="sub-heading">Welcome to KPS – Experience the Art of Paan.</div>
+    </div>
+
+    <div id="admin-controls">
+        <button id="edit-toggle" class="toggle-btn" onclick="toggleEditMode()">
+            <i class="ph ph-pencil-simple"></i> ADMIN MODE
+        </button>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <h2>Update Item</h2>
+        <input type="text" id="edit-name" placeholder="Paan Name">
+        <input type="text" id="edit-desc" placeholder="Short Description">
+        <input type="text" id="edit-price" placeholder="Price (e.g. ₹50)">
+        
+        <button class="btn" onclick="saveEdit()">Save Changes</button>
+        <button class="btn btn-cancel" onclick="closeModals()">Cancel</button>
+    </div>
+    
+    <div id="gesture-hint">Swipe • Pinch • Tap</div>
+
+    <div id="footer-container">
+        <div class="footer-brand">KPS Pan Shop</div>
+        <div class="footer-details">
+            📍 Colonelganj / 96/55 Lakadmandi<br>
+            📞 +91 8840222020
+        </div>
+    </div>
+
+    <script>
+        // --- 0. THEME LOGIC ---
+        let isDarkMode = false;
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const body = document.body;
+            const btn = document.getElementById('theme-toggle');
+            const icon = btn.querySelector('i');
+            if (isDarkMode) {
+                body.setAttribute('data-theme', 'dark');
+                icon.classList.remove('ph-moon'); icon.classList.add('ph-sun');
+            } else {
+                body.removeAttribute('data-theme');
+                icon.classList.remove('ph-sun'); icon.classList.add('ph-moon');
+            }
+            renderCards();
+        }
+
+        // --- 1. ADMIN LOGIC ---
+        let secretClicks = 0;
+        document.getElementById('secret-trigger').addEventListener('click', () => {
+            secretClicks++;
+            if(secretClicks === 5) {
+                const password = prompt("🔐 Admin Access\nEnter Password:");
+                if(password === "admin123") { 
+                    document.getElementById('admin-controls').style.display = 'block';
+                    alert("✅ Admin Mode Unlocked!");
+                } else { alert("❌ Access Denied"); }
+                secretClicks = 0; 
+            }
+        });
+
+        // --- 2. DATA MANAGEMENT (Updated with YOUR Images) ---
+        const defaultProducts = [
+            // Images mapped to your uploaded filenames:
+            { name: "Sada Paan", desc: "Classic fresh paan leaf with traditional natural flavor.", price: "₹10", color: "#2ecc71", image: null }, 
+            { name: "Tambaku 00 Paan", desc: "Original Tulsi tobacco with bold traditional taste.", price: "₹15", color: "#27ae60", image: null },
+            { name: "Kimam Special Paan", desc: "Special kimam paan for non tobacco person.", price: "₹15", color: "#e74c3c", image: "Kimam Paan.png" }, 
+            { name: "Anniversary Special", desc: "Exclusive royal mix prepared for special celebrations.", price: "₹50", color: "#f1c40f", image: "Anniversary Special Paan.png" }, 
+            { name: "Meetha Paan", desc: "Classy Sweet filling with refreshing mouth-freshener taste.", price: "₹15", color: "#20bf6b", image: "Meetha Paan.png" }, 
+            { name: "Full Meetha Paan", desc: "Extra sweet premium stuffing with rich dessert-like flavor.", price: "₹25", color: "#0fb9b1", image: "Full Meetha Paan.png" },
+            { name: "KPS Special Meetha", desc: "House special sweet paan with secret ingredients blend.", price: "₹35", color: "#fa8231", image: "KPS Special Paan.png" },
+            { name: "Rajnigandha Paan", desc: "Premium Rajnigandha paan for Rajnigandha lovers.", price: "₹35", color: "#a5b1c2", image: null }, 
+            { name: "Dragon Paan", desc: "Unique style paan with thrilling experience.", price: "₹30", color: "#eb3b5a", image: "Dragon Paan.png" },
+            { name: "Chocolate Paan", desc: "Chocolate syrup and cream blend with smooth sweet finish.", price: "₹30", color: "#795548", image: "Chocolate Paan.png" }, 
+            { name: "Fire Paan", desc: "Live fire-served paan with exciting hot & sweet sensation.", price: "₹35", color: "#fc5c65", image: "Fire Paan.png" }, 
+            { name: "Dry Fruits Paan", desc: "Luxury mix of cashew, almond & premium dry fruits.", price: "₹50", color: "#fd9644", image: "Dry Fruits Paan.png" }  
+        ];
+
+        // Changed Key to 'kps_v2_images' to force refresh data with new images
+        let products = JSON.parse(localStorage.getItem('kps_v2_images')) || defaultProducts;
+
+        function saveToStorage() {
+            localStorage.setItem('kps_v2_images', JSON.stringify(products));
+        }
+
+        // --- 3. SCENE SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 14; camera.position.y = 1;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xfff5e6, 0.7); 
+        dirLight.position.set(5, 10, 7); dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- 5. TEXTURE GENERATOR (Fix for Images) ---
+        function createCardTexture(text, price, baseColor, desc, imageFile) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 750;
+            const ctx = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+            
+            function draw() {
+                // Theme Colors
+                let bgStart = isDarkMode ? '#222' : '#FFFFFF';
+                let bgEnd = isDarkMode ? '#000' : '#FAFAFA';
+                let stroke = isDarkMode ? '#D4AF37' : '#EAEAEA';
+                let txtCol = isDarkMode ? '#FFFFFF' : '#1B3A2D';
+                let subCol = isDarkMode ? '#CCCCCC' : '#666666';
+                let circleFill = isDarkMode ? '#1a1a1a' : '#F5FFFA';
+
+                // Base Card
+                const grd = ctx.createLinearGradient(0, 0, 512, 750);
+                grd.addColorStop(0, bgStart); grd.addColorStop(1, bgEnd);
+                ctx.fillStyle = grd;
+                ctx.beginPath(); ctx.roundRect(0, 0, 512, 750, 30); ctx.fill();
+
+                ctx.lineWidth = isDarkMode ? 4 : 2; ctx.strokeStyle = stroke; ctx.stroke();
+
+                ctx.fillStyle = isDarkMode ? baseColor : "#2E8B57"; 
+                ctx.beginPath(); ctx.rect(0, 50, 512, 4); ctx.fill();
+
+                // --- CIRCLE & IMAGE LOGIC ---
+                // Draw Circle Background
+                ctx.fillStyle = circleFill;
+                ctx.beginPath(); ctx.arc(256, 260, 130, 0, Math.PI * 2); ctx.fill();
+                
+                // Draw Text (Fallback) or Load Image
+                if(imageFile) {
+                    const img = new Image();
+                    img.src = imageFile; 
+                    img.onload = () => {
+                        ctx.save();
+                        ctx.beginPath(); ctx.arc(256, 260, 130, 0, Math.PI * 2); ctx.clip();
+                        // Draw Image inside Circle
+                        ctx.drawImage(img, 126, 130, 260, 260); 
+                        ctx.restore();
+                        
+                        // Redraw Ring on top
+                        ctx.strokeStyle = baseColor; ctx.lineWidth = 4;
+                        ctx.beginPath(); ctx.arc(256, 260, 130, 0, Math.PI * 2); ctx.stroke();
+                        
+                        texture.needsUpdate = true; // IMPORTANT
+                    };
+                    // Error fallback - draw ring immediately
+                    ctx.strokeStyle = baseColor; ctx.lineWidth = 4; ctx.stroke();
+                } else {
+                    // No Image provided, draw Letter
+                    ctx.fillStyle = baseColor;
+                    ctx.font = "bold 150px Georgia";
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(text.charAt(0), 256, 265);
+                    ctx.strokeStyle = baseColor; ctx.lineWidth = 4; ctx.stroke();
+                }
+                ctx.textBaseline = "alphabetic";
+
+                // --- INFO TEXT ---
+                ctx.fillStyle = isDarkMode ? "#D4AF37" : txtCol; 
+                let fontSize = text.length > 15 ? 40 : 50;
+                ctx.font = `bold ${fontSize}px Georgia`; ctx.fillText(text, 256, 500);
+
+                // Description
+                ctx.fillStyle = subCol; ctx.font = "300 24px Arial"; 
+                const maxWidth = 440; const lineHeight = 32;
+                const x = 256; let y = 550;
+                const words = (desc || "").split(' '); let line = '';
+                for(let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                        ctx.fillText(line, x, y); line = words[n] + ' '; y += lineHeight;
+                    } else { line = testLine; }
+                }
+                ctx.fillText(line, x, y);
+
+                // Price Tag
+                const priceW = 180; const priceH = 60;
+                ctx.fillStyle = "#C9A227"; 
+                ctx.beginPath(); ctx.roundRect(256 - (priceW/2), 640, priceW, priceH, 30); ctx.fill();
+                ctx.fillStyle = "#FFFFFF"; ctx.font = "bold 35px Arial";
+                ctx.textBaseline = "middle"; ctx.fillText(price, 256, 640 + (priceH/2) + 2); 
+                ctx.textBaseline = "alphabetic";
+
+                texture.needsUpdate = true;
+            }
+            draw(); 
+            return texture;
+        }
+
+        // --- 6. RENDER CARDS ---
+        const carouselGroup = new THREE.Group(); scene.add(carouselGroup);
+        const cards = []; const radius = 7.5; const dummyTarget = new THREE.Object3D();
+
+        function renderCards() {
+            cards.forEach(c => carouselGroup.remove(c)); cards.length = 0;
+            products.forEach((product, i) => {
+                const angle = (i / products.length) * Math.PI * 2;
+                const geometry = new THREE.BoxGeometry(2.3, 3.4, 0.05); 
+                // Pass image property here
+                const texture = createCardTexture(product.name, product.price, product.color, product.desc, product.image);
+                
+                const matFront = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, color: 0xffffff });
+                const matBody = new THREE.MeshStandardMaterial({ color: isDarkMode ? 0x111111 : 0xffffff, roughness: 0.8 });
+                const materials = [matBody, matBody, matBody, matBody, matFront, matFront];
+
+                const card = new THREE.Mesh(geometry, materials);
+                card.castShadow = true;
+                card.position.x = Math.cos(angle) * radius; card.position.z = Math.sin(angle) * radius;
+                card.lookAt(0, 0, 0); card.rotation.y += Math.PI;
+                card.userData = { id: i, angle: angle }; 
+                carouselGroup.add(card); cards.push(card);
+            });
+        }
+        renderCards();
+
+        // --- 7. INTERACTIONS (Touch/Mouse) ---
+        let isEditMode = false; let currentEditIndex = -1; let zoomedCardIndex = -1;
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        let isDragging = false, isPinching = false;
+        let previousMouseX = 0; let targetRotation = 0, currentRotation = 0;
+        let targetVerticalY = 0, currentVerticalY = 0;
+        let autoRotateSpeed = 0.0008; let initialPinchDistance = 0, lastMoveTime = 0;
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-toggle');
+            if(isEditMode) {
+                btn.innerHTML = '<i class="ph ph-check-circle"></i> SAVE MODE'; btn.classList.add('active'); zoomedCardIndex = -1;
+            } else {
+                btn.innerHTML = '<i class="ph ph-pencil-simple"></i> ADMIN MODE'; btn.classList.remove('active'); closeModals();
+            }
+        }
+        function saveEdit() {
+            if (currentEditIndex === -1) return;
+            products[currentEditIndex].name = document.getElementById('edit-name').value;
+            products[currentEditIndex].desc = document.getElementById('edit-desc').value;
+            products[currentEditIndex].price = document.getElementById('edit-price').value;
+            saveToStorage(); renderCards(); closeModals();
+        }
+        function closeModals() { document.getElementById('edit-modal').classList.remove('active'); currentEditIndex = -1; }
+
+        window.addEventListener('mousedown', (e) => { if(!e.target.closest('.modal')) { isDragging = true; previousMouseX = e.clientX; autoRotateSpeed = 0; } });
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            if(isDragging && zoomedCardIndex === -1) { 
+                targetRotation += (e.clientX - previousMouseX) * 0.003;
+                targetVerticalY -= (e.clientY - window.innerHeight/2) * 0.0001; 
+                previousMouseX = e.clientX; lastMoveTime = Date.now();
+            }
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; if(zoomedCardIndex === -1) setTimeout(() => autoRotateSpeed = 0.0008, 2000); });
+        
+        window.addEventListener('touchstart', (e) => { 
+            if(e.target.closest('.modal')) return;
+            if (e.touches.length === 2) {
+                isPinching = true; isDragging = false; autoRotateSpeed = 0;
+                const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+            } else if (e.touches.length === 1) {
+                isDragging = true; isPinching = false; previousMouseX = e.touches[0].clientX; autoRotateSpeed = 0; 
+                mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchmove', (e) => {
+            if(e.target.closest('.modal')) return; e.preventDefault(); 
+            if (isPinching && e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                camera.position.z += (initialPinchDistance - dist) * 0.05; 
+                camera.position.z = Math.max(8, Math.min(camera.position.z, 22)); initialPinchDistance = dist;
+            } else if (isDragging && e.touches.length === 1 && zoomedCardIndex === -1) {
+                targetRotation += (e.touches[0].clientX - previousMouseX) * 0.003; 
+                previousMouseX = e.touches[0].clientX;
+            }
+        }, {passive: false});
+        window.addEventListener('touchend', (e) => { if(e.touches.length === 0) { isDragging = false; isPinching = false; if(zoomedCardIndex === -1) setTimeout(() => autoRotateSpeed = 0.0008, 2000); }});
+
+        window.addEventListener('click', (event) => {
+            if (Date.now() - lastMoveTime < 200) return; 
+            if(event.target.closest('.modal') || event.target.closest('#admin-controls') || event.target.closest('#header-container') || event.target.closest('#theme-toggle')) return;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(cards);
+            if (intersects.length > 0) {
+                const index = intersects[0].object.userData.id;
+                if (isEditMode) {
+                    currentEditIndex = index;
+                    document.getElementById('edit-name').value = products[index].name;
+                    document.getElementById('edit-desc').value = products[index].desc || "";
+                    document.getElementById('edit-price').value = products[index].price;
+                    document.getElementById('edit-modal').classList.add('active');
+                } else {
+                    if (zoomedCardIndex === index) { zoomedCardIndex = -1; autoRotateSpeed = 0.0008; } 
+                    else { zoomedCardIndex = index; autoRotateSpeed = 0; targetVerticalY = 0; }
+                }
+            } else { if (isEditMode) closeModals(); else if (zoomedCardIndex !== -1) { zoomedCardIndex = -1; autoRotateSpeed = 0.0008; } }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isDragging && !isEditMode && zoomedCardIndex === -1 && !isPinching) targetRotation += autoRotateSpeed;
+            currentRotation += (targetRotation - currentRotation) * 0.03;
+            carouselGroup.rotation.y = currentRotation;
+            currentVerticalY += (targetVerticalY - currentVerticalY) * 0.05;
+            carouselGroup.position.y = currentVerticalY;
+            
+            const time = Date.now() * 0.001;
+            const camLocal = camera.position.clone().applyMatrix4(carouselGroup.matrixWorld.clone().invert());
+
+            cards.forEach((card, i) => {
+                let targetPos = new THREE.Vector3(); let targetScale = 1; let targetQuaternion = new THREE.Quaternion();
+                if (i === zoomedCardIndex) {
+                    const desiredWorldPos = new THREE.Vector3(0, 1.0 + currentVerticalY, 11.5); 
+                    const inverseGroupMatrix = carouselGroup.matrixWorld.clone().invert();
+                    const localTargetPos = desiredWorldPos.clone().applyMatrix4(inverseGroupMatrix);
+                    targetPos.copy(localTargetPos); targetScale = 1.4; 
+                    dummyTarget.position.copy(localTargetPos); dummyTarget.lookAt(camLocal); targetQuaternion.copy(dummyTarget.quaternion);
+                } else {
+                    const angle = card.userData.angle;
+                    targetPos.set(Math.cos(angle) * radius, Math.sin(time + i) * 0.1, Math.sin(angle) * radius);
+                    dummyTarget.position.copy(targetPos); dummyTarget.lookAt(0, 0, 0); dummyTarget.rotateY(Math.PI); targetQuaternion.copy(dummyTarget.quaternion);
+                }
+                card.position.lerp(targetPos, 0.08); card.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08); card.quaternion.slerp(targetQuaternion, 0.08); 
+            });
+            renderer.render(scene, camera);
+        }
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        animate();
+    </script>
+</body>
+</html>
